@@ -1,0 +1,3 @@
+[workspace]
+members = ["pf-core", "pf-collectors", "pf-agent", "pf-cli", "pf-elevated", "pf-gui/src-tauri"]
+resolver = "2"

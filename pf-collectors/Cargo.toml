@@ -1,0 +1,17 @@
+[package]
+name = "pf-collectors"
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0"
+
+[dependencies]
+pf-core = { path = "../pf-core" }
+
+[dependencies.windows]
+version = "0.62"
+features = [
+    "Win32_NetworkManagement_IpHelper",
+    "Win32_NetworkManagement_WiFi",
+    "Win32_NetworkManagement_Ndis",
+    "Win32_Foundation",
+]

@@ -1,0 +1,67 @@
+# --- Rust / Cargo ---
+target/
+**/*.rs.bk
+*.pdb
+
+# --- Tauri external binaries (staged build output: `npm run sidecar`) ---
+pf-gui/src-tauri/binaries/
+
+# --- Node / frontend ---
+node_modules/
+pf-gui/dist/
+pf-gui/.vite/
+*.tsbuildinfo
+
+# --- Recorded sessions, experiments, reports, calibration data ---
+# Test fixtures live in pf-core/fixtures/ and are intentionally NOT ignored.
+/sessions/
+**/sessions/
+*.jsonl.recovered.jsonl
+
+# --- Derived GUI caches ---
+.pf-gui-index.json
+**/.pf-gui-index.json
+
+# --- Runtime state / local settings / logs ---
+*.log
+pf-gui/pf-dev.log
+pf-gui-settings.json
+*.pf-gui-settings.json
+
+# --- Temporary / validation / QA artifacts ---
+/tmp/
+*.tmp
+*.bak
+validation/
+qa-reports/
+*.validation.json
+
+# --- Generated release output ---
+/dist-release/
+/dist-portable/
+
+# --- Public export staging output (regenerate; never commit) ---
+/public-export/
+/.public-export/
+
+# --- Local signing material (NEVER commit) ---
+*.pfx
+*.p12
+*.snk
+*.cer
+*.pem
+signing-secrets/
+
+# --- Local environment / editor ---
+.env
+.env.*
+!.env.example
+.vscode/
+.idea/
+*.swp
+Thumbs.db
+desktop.ini
+
+# --- Ad-hoc local archives (not source) ---
+/testttt.zip
+/gui-screenshots.zip

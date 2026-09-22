@@ -1,0 +1,14 @@
+[package]
+name = "power-forensics"
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0"
+
+[dependencies]
+pf-core = { path = "../pf-core" }
+pf-collectors = { path = "../pf-collectors" }
+pf-agent = { path = "../pf-agent" }
+
+[[bin]]
+name = "power-forensics"
+path = "src/main.rs"

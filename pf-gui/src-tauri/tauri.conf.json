@@ -1,0 +1,67 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "power-forensics",
+  "version": "0.1.0",
+  "identifier": "com.powerforensics.desktop",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build && npm run sidecar",
+    "devUrl": "http://localhost:1420",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "power-forensics",
+        "width": 1440,
+        "height": 900,
+        "minWidth": 1024,
+        "minHeight": 640,
+        "resizable": true,
+        "theme": "Dark"
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; connect-src 'self' ipc: http://ipc.localhost; img-src 'self' data: asset: http://asset.localhost; style-src 'self' 'unsafe-inline'; script-src 'self'; font-src 'self' data:",
+      "devCsp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": [
+      "nsis"
+    ],
+    "publisher": "GamerKingHD",
+    "copyright": "Copyright 2026 GamerKingHD",
+    "category": "Utility",
+    "shortDescription": "Windows laptop power profiler and battery-forensics workbench",
+    "longDescription": "power-forensics records system-wide Windows power telemetry, preserves provenance for every reading, and provides Analyze, Compare, Experiments and Calibration workspaces for battery-life forensics. The GUI is a controller; collection and forensic truth live in the bundled power-forensics engine.",
+    "icon": [
+      "icons/icon.ico"
+    ],
+    "externalBin": [
+      "binaries/power-forensics",
+      "binaries/pf-elevated"
+    ],
+    "windows": {
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper"
+      },
+      "nsis": {
+        "installMode": "currentUser",
+        "languages": [
+          "English"
+        ]
+      }
+    },
+    "resources": {
+      "../../LICENSE": "LICENSE",
+      "../../NOTICE": "NOTICE",
+      "../../PRIVACY.md": "PRIVACY.md",
+      "../../THIRD_PARTY_NOTICES.txt": "THIRD_PARTY_NOTICES.txt"
+    },
+    "license": "Apache-2.0",
+    "licenseFile": "../../LICENSE"
+  }
+}

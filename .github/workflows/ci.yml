@@ -1,0 +1,168 @@
+name: CI
+
+# Public-repository CI. This workflow ships in the public export and must stay
+# public-safe: it uses only standard tooling and never references private
+# release tooling. On the private development repository the integrity job is
+# skipped (a private repository name contains "private"); the private
+# export-boundary gate lives in that repository instead.
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install pinned Rust toolchain
+        shell: pwsh
+        run: rustup toolchain install 1.98.1 --profile minimal --component rustfmt,clippy --target x86_64-pc-windows-msvc
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: pf-gui/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: pf-gui
+        run: npm ci
+
+      - name: Audit frontend dependencies
+        working-directory: pf-gui
+        run: npm audit --audit-level=high
+
+      # The Tauri build requires the staged external binaries to exist before
+      # any cargo build/test/clippy of pf-gui can compile.
+      - name: Stage external binaries
+        working-directory: pf-gui
+        run: npm run sidecar
+
+      - name: Format check
+        run: cargo fmt --all -- --check
+
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
+
+      - name: Test
+        run: cargo test --workspace --locked
+
+      - name: Cargo metadata
+        run: cargo metadata --no-deps --locked --format-version 1 > $null
+
+      - name: Community workspace compilation
+        run: cargo build --workspace --locked
+
+      - name: Frontend typecheck
+        working-directory: pf-gui
+        run: npm run typecheck
+
+      - name: Frontend tests
+        working-directory: pf-gui
+        run: npm test
+
+      - name: Frontend production build
+        working-directory: pf-gui
+        run: npm run build
+
+      - name: Version consistency
+        working-directory: pf-gui
+        run: npm run check-version
+
+      # Full Tauri production bundle is produced by the Release workflow on tags.
+      # Allow an on-demand full GUI build without slowing every push.
+      - name: Tauri production build (manual)
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        working-directory: pf-gui
+        run: npm run tauri -- build
+
+  integrity:
+    # Only meaningful in the public repository; skip in the private one.
+    if: ${{ !contains(github.repository, 'private') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Required release files must exist
+        shell: bash
+        run: |
+          set -e
+          for f in \
+            LICENSE NOTICE README.md CONTRIBUTING.md SECURITY.md PRIVACY.md \
+            THIRD_PARTY_NOTICES.txt Cargo.toml Cargo.lock rust-toolchain.toml \
+            docs/USAGE.md docs/RELEASE.md docs/RELEASE_NOTES_TEMPLATE.md \
+            pf-gui/package.json pf-gui/package-lock.json \
+            pf-gui/src-tauri/tauri.conf.json; do
+            if [ ! -f "$f" ]; then echo "MISSING required file: $f"; exit 1; fi
+          done
+          echo "required files present"
+
+      - name: Licensing metadata must be intact
+        shell: bash
+        run: |
+          set -e
+          grep -q "Apache License" LICENSE
+          grep -q "Version 2.0" LICENSE
+          grep -q "power-forensics" NOTICE
+          grep -q "GamerKingHD" NOTICE
+          echo "license and attribution present"
+
+      - name: Version metadata must be consistent
+        shell: bash
+        run: |
+          set -e
+          versions=""
+          while IFS= read -r f; do
+            v=$(awk '/^\[package\]/{p=1;next} /^\[/{p=0} p && $1=="version"{gsub(/[" ]/,"",$3); print $3; exit}' "$f")
+            [ -n "$v" ] && versions="$versions$v"$'\n'
+          done < <(git ls-files '*Cargo.toml')
+          unique=$(printf '%s' "$versions" | sed '/^$/d' | sort -u)
+          pkg=$(grep -oE '"version": *"[^"]+"' pf-gui/package.json | head -1 | sed -E 's/.*"([^"]+)"/\1/')
+          tauri=$(grep -oE '"version": *"[^"]+"' pf-gui/src-tauri/tauri.conf.json | head -1 | sed -E 's/.*"([^"]+)"/\1/')
+          echo "cargo: $unique"
+          echo "package.json: $pkg"
+          echo "tauri.conf.json: $tauri"
+          if [ "$(printf '%s' "$unique" | wc -l)" -ne 1 ]; then echo "crate versions disagree"; exit 1; fi
+          if [ "$unique" != "$pkg" ] || [ "$unique" != "$tauri" ]; then echo "version metadata inconsistent"; exit 1; fi
+          echo "versions consistent: $unique"
+
+      - name: No references to private or omitted files
+        shell: bash
+        run: |
+          set -e
+          # Tokens are split so this check does not match its own text.
+          t1='private''/'
+          t2='pf-''pro/'
+          t3='docs/''internal/'
+          t4='release/''public-manifest'
+          pat="(^|[^A-Za-z0-9_-])($t1|$t2|$t3|$t4)"
+          if grep -rInE --exclude-dir=.git --exclude-dir=target --exclude-dir=node_modules "$pat" . ; then
+            echo "PRIVATE REFERENCE FOUND"; exit 1
+          fi
+          echo "no private references"
+
+      - name: Relative documentation links must resolve
+        shell: bash
+        run: |
+          status=0
+          while IFS= read -r md; do
+            while IFS= read -r target; do
+              [ -z "$target" ] && continue
+              case "$target" in
+                http*|mailto:*|"#"*|/*) continue ;;
+              esac
+              clean="${target%%#*}"; clean="${clean%%\?*}"
+              [ -z "$clean" ] && continue
+              base=$(dirname "$md")
+              if [ ! -e "$base/$clean" ]; then
+                echo "BROKEN LINK: $md -> $target"; status=1
+              fi
+            done < <(grep -oE '\]\([^)]+\)' "$md" | sed -E 's/^\]\(//; s/\)$//')
+          done < <(git ls-files '*.md')
+          exit $status

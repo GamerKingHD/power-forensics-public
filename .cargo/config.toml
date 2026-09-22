@@ -1,0 +1,6 @@
+# Statically link the MSVC C runtime so the distributed Windows binaries do
+# not require the Visual C++ 2015-2022 redistributable on a clean machine.
+# The Universal CRT (api-ms-win-crt-*) is part of Windows 10/11; the dynamic
+# VCRUNTIME140/MSVCP140 DLLs are not, so we remove that dependency at link time.
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "target-feature=+crt-static"]

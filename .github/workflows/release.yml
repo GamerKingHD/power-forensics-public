@@ -1,0 +1,83 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing tag to release (e.g. v0.1.0)'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    # Protected environment: signing secrets are exposed only to this job.
+    environment: release-signing
+    env:
+      PF_SIGN_CERT_BASE64: ${{ secrets.PF_SIGN_CERT_BASE64 }}
+      PF_SIGN_CERT_PASSWORD: ${{ secrets.PF_SIGN_CERT_PASSWORD }}
+      PF_SIGN_CERT_SHA1: ${{ secrets.PF_SIGN_CERT_SHA1 }}
+      PF_SIGN_PUBLISHER: ${{ secrets.PF_SIGN_PUBLISHER }}
+      PF_SIGN_TIMESTAMP_URL: ${{ vars.PF_SIGN_TIMESTAMP_URL }}
+      PF_SIGN_REQUIRED: ${{ vars.PF_SIGN_REQUIRED }}
+    steps:
+      - name: Checkout exact tag
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+          fetch-depth: 0
+
+      - name: Install pinned Rust toolchain
+        shell: pwsh
+        run: rustup toolchain install 1.98.1 --profile minimal --component rustfmt,clippy --target x86_64-pc-windows-msvc
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: pf-gui/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: pf-gui
+        run: npm ci
+
+      - name: Decode signing certificate
+        if: ${{ env.PF_SIGN_CERT_BASE64 != '' }}
+        shell: pwsh
+        run: |
+          $path = Join-Path $env:RUNNER_TEMP 'codesign.pfx'
+          [IO.File]::WriteAllBytes($path, [Convert]::FromBase64String($env:PF_SIGN_CERT_BASE64))
+          "PF_SIGN_CERT=$path" | Out-File -Append -FilePath $env:GITHUB_ENV
+
+      - name: Build and package release
+        shell: pwsh
+        run: powershell -ExecutionPolicy Bypass -File scripts/release-windows.ps1
+
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: power-forensics-windows-x64
+          path: dist-release/*/*
+          if-no-files-found: error
+
+      - name: Publish GitHub Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = '${{ inputs.tag || github.ref_name }}'
+          $dir = "dist-release/$tag"
+          if (-not (Test-Path $dir)) { throw "release directory $dir not found" }
+          gh release create $tag `
+            "$dir/power-forensics-$($tag.TrimStart('v'))-x64-setup.exe" `
+            "$dir/power-forensics-$($tag.TrimStart('v'))-x64-portable.zip" `
+            "$dir/SHA256SUMS.txt" `
+            "$dir/release-manifest.json" `
+            --title "power-forensics $($tag.TrimStart('v'))" `
+            --generate-notes
