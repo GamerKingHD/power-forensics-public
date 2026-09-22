@@ -10,7 +10,7 @@ Record system-wide power telemetry, investigate battery drain, compare before/af
 
 [Download](#download) · [Quick start](#quick-start) · [How it works](#how-it-works) · [Privacy](#privacy) · [Build from source](#build-from-source)
 
-[![CI](https://github.com/GamerKingHD/power-forensics/actions/workflows/ci.yml/badge.svg)](https://github.com/GamerKingHD/power-forensics/actions/workflows/ci.yml)
+[![CI](https://github.com/GamerKingHD/power-forensics-public/actions/workflows/ci.yml/badge.svg)](https://github.com/GamerKingHD/power-forensics-public/actions/workflows/ci.yml)
 ![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11-0078D4)
 ![Architecture](https://img.shields.io/badge/arch-x86--64-555)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-green.svg)](LICENSE)
@@ -82,7 +82,7 @@ Generate self-contained HTML reports and export CSV/JSON for deeper analysis. Re
 
 ## Download
 
-Public builds are published through [GitHub Releases](https://github.com/GamerKingHD/power-forensics/releases).
+Public builds are published through [GitHub Releases](https://github.com/GamerKingHD/power-forensics-public/releases).
 
 Each release is expected to contain:
 
@@ -253,8 +253,8 @@ Portable mode stores the equivalent data alongside the executable. Uninstalling 
 - Node.js 22+ and npm.
 
 ```powershell
-git clone https://github.com/GamerKingHD/power-forensics.git
-cd power-forensics
+git clone https://github.com/GamerKingHD/power-forensics-public.git
+cd power-forensics-public
 
 cd pf-gui
 npm ci
